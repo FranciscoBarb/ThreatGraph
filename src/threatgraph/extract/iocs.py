@@ -92,3 +92,23 @@ def extract_domains(text: str) -> tuple[str, ...]:
             validos.append(d)
 
     return tuple(sorted(set(validos)))
+
+
+# IOCs
+
+
+@dataclass(frozen=True)
+class IOCs:
+    ips: tuple[str, ...] = ()
+    domains: tuple[str, ...] = ()
+    hashes: tuple[FileHash, ...] = ()
+    cves: tuple[str, ...] = ()
+
+
+def extract_iocs(text: str) -> IOCs:
+    return IOCs(
+        cves=extract_cves(text),
+        hashes=extract_hashes(text),
+        ips=extract_ips(text),
+        domains=extract_domains(text),
+    )

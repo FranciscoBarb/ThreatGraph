@@ -7,7 +7,10 @@ name = "threatgraph"
 version = "0.1.0"
 description = "Turns free-text cybersecurity reports into a Neo4j knowledge graph."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "neo4j>=5",
+    "python-dotenv>=1",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]

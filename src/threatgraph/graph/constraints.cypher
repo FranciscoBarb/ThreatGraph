@@ -1,0 +1,20 @@
+CREATE CONSTRAINT threat_actor_name IF NOT EXISTS
+FOR (n:ThreatActor) REQUIRE n.name IS UNIQUE;
+
+CREATE CONSTRAINT ip_address IF NOT EXISTS
+FOR (n:IP_Address) REQUIRE n.address IS UNIQUE;
+
+CREATE CONSTRAINT domain_name IF NOT EXISTS
+FOR (n:Domain) REQUIRE n.name IS UNIQUE;
+
+CREATE CONSTRAINT file_hash_value IF NOT EXISTS
+FOR (n:FileHash) REQUIRE n.value IS UNIQUE;
+
+CREATE CONSTRAINT vulnerability_cve IF NOT EXISTS
+FOR (n:Vulnerability) REQUIRE n.cve_id IS UNIQUE;
+
+CREATE CONSTRAINT technique_mitre_id IF NOT EXISTS
+FOR (n:Technique) REQUIRE n.mitre_id IS UNIQUE;
+
+CREATE CONSTRAINT report_id IF NOT EXISTS
+FOR (n:Report) REQUIRE n.id IS UNIQUE;

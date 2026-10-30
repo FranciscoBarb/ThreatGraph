@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from neo4j import Driver, GraphDatabase
+from neo4j import Driver, GraphDatabase, Session
 
 
 def get_driver() -> Driver:
@@ -10,3 +10,10 @@ def get_driver() -> Driver:
     user = os.environ.get("NEO4J_USER", "neo4j")
     password = os.environ["NEO4J_PASSWORD"]
     return GraphDatabase.driver(uri, auth=(user, password))
+
+
+_MERGE_THREAT_ACTOR = "MERGE (a:ThreatActor {name: $name})"
+
+
+def merge_threat_actor(session: Session, name: str) -> None:
+    session.run(_MERGE_THREAT_ACTOR, name=name)

@@ -1,0 +1,16 @@
+SYNTHETIC SAMPLE REPORT - for ThreatGraph demos only. Not real threat intelligence.
+
+Summary
+A threat actor delivered a loader through phishing emails that linked to
+update-check.top. After execution, the loader contacted the command and control
+server at 185.220.101.5 and downloaded a second stage. Initial access on exposed
+appliances was obtained by exploiting CVE-2023-4966.
+
+The victim's internal host 192.168.1.20 was used for lateral movement. Techniques
+are mapped to MITRE ATT&CK, see attack.mitre.org.
+
+Indicators of compromise
+Domain:  update-check.top
+IP:      185.220.101.5
+MD5:     489e45a95f2ac9c4d54bc44e4ae69c9f
+SHA-256: 5cb492db3253a051a07d51c80c08de920865c15fd6ef156692ed4a6f4a998c7f

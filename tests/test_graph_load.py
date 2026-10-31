@@ -4,6 +4,7 @@ import pytest
 
 from threatgraph.extract.iocs import FileHash, IOCs
 from threatgraph.graph.load import get_driver, load_iocs, merge_threat_actor
+from threatgraph.ingest import ingest_file
 
 pytestmark = pytest.mark.integration  # needs a running Neo4j
 
@@ -11,7 +12,7 @@ TEST_ACTOR = "TEST-ACTOR-pytest"
 TEST_REPORT = "test-report-pytest"
 TEST_IOCS = IOCs(
     ips=("198.51.100.77",),
-    domains=("pytest-only.test",),
+    domains=("pytest-only.top",),
     hashes=(FileHash(hashlib.sha256(b"threatgraph-pytest").hexdigest(), "SHA-256"),),
     cves=("CVE-1999-99999",),
 )
@@ -80,3 +81,22 @@ def test_loading_the_same_report_twice_creates_no_duplicates(session):
     ).single()
 
     assert (result["reports"], result["mentions"], result["iocs"]) == (1, 4, 4)
+
+
+def test_ingest_file_uses_the_file_name_as_report_id(session, tmp_path):
+    report = tmp_path / f"{TEST_REPORT}.txt"
+    report.write_text(
+        f"C2 at pytest-only.top, dropper {TEST_IOCS.hashes[0].value}, exploiting CVE-1999-99999.",
+        encoding="utf-8",
+    )
+
+    ingest_file(report, session)
+    ingest_file(report, session)
+
+    result = session.run(
+        "MATCH (r:Report {id: $report})-[m:MENTIONS]->(x) "
+        "RETURN count(DISTINCT r) AS reports, count(m) AS mentions",
+        report=TEST_REPORT,
+    ).single()
+
+    assert (result["reports"], result["mentions"]) == (1, 3)

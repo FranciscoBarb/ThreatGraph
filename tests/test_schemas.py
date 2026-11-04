@@ -1,7 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from threatgraph.extract.schemas import Technique
+from threatgraph.extract.schemas import Technique, ThreatActor
+
+# Model tests for the Technique schema
 
 
 def test_valid_technique_is_accepted():
@@ -44,3 +46,30 @@ def test_empty_name_is_rejected():
 def test_unexpected_fields_are_rejected():
     with pytest.raises(ValidationError):
         Technique(mitre_id="T1566", name="Phishing", confidence="high")
+
+
+# Model tests for the ThreatActor schema
+
+
+def test_valid_threat_actor_is_accepted():
+    assert ThreatActor(name="LockBit").name == "LockBit"
+
+
+def test_actor_name_is_stripped():
+    assert ThreatActor(name="  Lazarus Group  ").name == "Lazarus Group"
+
+
+@pytest.mark.parametrize("bad_name", ["", "   "])
+def test_empty_actor_name_is_rejected(bad_name):
+    with pytest.raises(ValidationError):
+        ThreatActor(name=bad_name)
+
+
+def test_overlong_actor_name_is_rejected():
+    with pytest.raises(ValidationError):
+        ThreatActor(name="x" * 101)
+
+
+def test_actor_unexpected_fields_are_rejected():
+    with pytest.raises(ValidationError):
+        ThreatActor(name="LockBit", country="RU")

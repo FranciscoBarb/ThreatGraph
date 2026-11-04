@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -19,3 +21,18 @@ class Technique(_StrictModel):
 
 class ThreatActor(_StrictModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class RelationType(StrEnum):
+    USES_IP = "USES_IP"
+    USES_DOMAIN = "USES_DOMAIN"
+    USES_HASH = "USES_HASH"
+    EXPLOITS = "EXPLOITS"
+    USES_TECHNIQUE = "USES_TECHNIQUE"
+
+
+class Relation(_StrictModel):
+    actor: str = Field(min_length=1, max_length=100)
+    type: RelationType
+    target: str = Field(min_length=1)
+    evidence: str = Field(min_length=1, max_length=1000)

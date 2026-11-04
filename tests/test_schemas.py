@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from threatgraph.extract.schemas import Technique, ThreatActor
+from threatgraph.extract.schemas import Relation, RelationType, Technique, ThreatActor
 
 # Model tests for the Technique schema
 
@@ -73,3 +73,45 @@ def test_overlong_actor_name_is_rejected():
 def test_actor_unexpected_fields_are_rejected():
     with pytest.raises(ValidationError):
         ThreatActor(name="LockBit", country="RU")
+
+
+# Model tests for the Relation schema
+
+EVIDENCE = "LockBit operators used 185.220.101.5 as command and control."
+
+
+def test_valid_relation_is_accepted():
+    relation = Relation(actor="LockBit", type="USES_IP", target="185.220.101.5", evidence=EVIDENCE)
+
+    assert relation.type is RelationType.USES_IP
+    assert relation.evidence == EVIDENCE
+
+
+def test_unknown_relation_type_is_rejected():
+    with pytest.raises(ValidationError):
+        Relation(actor="LockBit", type="LIKES", target="185.220.101.5", evidence=EVIDENCE)
+
+
+@pytest.mark.parametrize("field", ["actor", "target", "evidence"])
+def test_empty_fields_are_rejected(field):
+    data = {
+        "actor": "LockBit",
+        "type": "USES_IP",
+        "target": "185.220.101.5",
+        "evidence": EVIDENCE,
+    }
+    data[field] = ""
+
+    with pytest.raises(ValidationError):
+        Relation(**data)
+
+
+def test_llm_cannot_set_source_report():
+    with pytest.raises(ValidationError):
+        Relation(
+            actor="LockBit",
+            type="USES_IP",
+            target="185.220.101.5",
+            evidence=EVIDENCE,
+            source_report="made-up-report",
+        )

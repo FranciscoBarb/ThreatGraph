@@ -115,3 +115,55 @@ def test_llm_cannot_set_source_report():
             evidence=EVIDENCE,
             source_report="made-up-report",
         )
+
+
+@pytest.mark.parametrize(
+    ("relation_type", "target"),
+    [
+        ("USES_IP", "185.220.101.5"),
+        ("USES_DOMAIN", "update-check.top"),
+        ("USES_HASH", "489e45a95f2ac9c4d54bc44e4ae69c9f"),
+        ("EXPLOITS", "CVE-2023-4966"),
+        ("USES_TECHNIQUE", "T1566"),
+    ],
+)
+def test_target_matching_the_type_is_accepted(relation_type, target):
+    relation = Relation(actor="LockBit", type=relation_type, target=target, evidence=EVIDENCE)
+
+    assert relation.target == target
+
+
+@pytest.mark.parametrize(
+    ("relation_type", "target"),
+    [
+        ("USES_IP", "update-check.top"),  # a domain where an IP goes
+        ("USES_IP", "999.1.1.1"),  # octet out of range
+        ("USES_IP", "see 185.220.101.5 here"),  # a sentence, not a bare value
+        ("USES_DOMAIN", "185.220.101.5"),
+        ("USES_DOMAIN", "payload.exe"),  # file name
+        ("USES_HASH", "abc123"),  # too short
+        ("USES_HASH", "CVE-2023-4966"),
+        ("EXPLOITS", "T1566"),
+        ("EXPLOITS", "CVE-2023-49"),  # sequence number too short
+        ("USES_TECHNIQUE", "TA0001"),  # a tactic
+        ("USES_TECHNIQUE", "Phishing"),  # a name, not an ID
+    ],
+)
+def test_target_not_matching_the_type_is_rejected(relation_type, target):
+    with pytest.raises(ValidationError):
+        Relation(actor="LockBit", type=relation_type, target=target, evidence=EVIDENCE)
+
+
+@pytest.mark.parametrize(
+    ("relation_type", "raw", "canonical"),
+    [
+        ("USES_DOMAIN", "Update-Check.TOP", "update-check.top"),
+        ("USES_HASH", "489E45A95F2AC9C4D54BC44E4AE69C9F", "489e45a95f2ac9c4d54bc44e4ae69c9f"),
+        ("EXPLOITS", "cve-2023-4966", "CVE-2023-4966"),
+        ("USES_TECHNIQUE", " t1566 ", "T1566"),
+    ],
+)
+def test_target_is_normalized_to_its_canonical_form(relation_type, raw, canonical):
+    relation = Relation(actor="LockBit", type=relation_type, target=raw, evidence=EVIDENCE)
+
+    assert relation.target == canonical

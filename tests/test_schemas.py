@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from threatgraph.extract.schemas import Relation, RelationType, Technique, ThreatActor
+from threatgraph.extract.schemas import (
+    Relation,
+    RelationType,
+    ReportExtraction,
+    Technique,
+    ThreatActor,
+)
 
 # Model tests for the Technique schema
 
@@ -167,3 +173,65 @@ def test_target_is_normalized_to_its_canonical_form(relation_type, raw, canonica
     relation = Relation(actor="LockBit", type=relation_type, target=raw, evidence=EVIDENCE)
 
     assert relation.target == canonical
+
+
+def _payload(**overrides):
+    data = {
+        "actors": [{"name": "LockBit"}],
+        "techniques": [{"mitre_id": "T1566", "name": "Phishing"}],
+        "relations": [
+            {
+                "actor": "LockBit",
+                "type": "USES_IP",
+                "target": "185.220.101.5",
+                "evidence": EVIDENCE,
+            },
+            {
+                "actor": "LockBit",
+                "type": "USES_TECHNIQUE",
+                "target": "T1566",
+                "evidence": "LockBit sent phishing emails.",
+            },
+        ],
+    }
+    data.update(overrides)
+    return data
+
+
+def test_empty_extraction_is_valid():
+    extraction = ReportExtraction()
+
+    assert (extraction.actors, extraction.techniques, extraction.relations) == ((), (), ())
+
+
+def test_extraction_is_built_from_llm_style_json():
+    extraction = ReportExtraction.model_validate(_payload())
+
+    assert len(extraction.actors) == 1
+    assert len(extraction.relations) == 2
+    assert extraction.relations[0].type is RelationType.USES_IP
+
+
+def test_relation_naming_an_unlisted_actor_is_rejected():
+    with pytest.raises(ValidationError):
+        ReportExtraction.model_validate(_payload(actors=[{"name": "Lazarus Group"}]))
+
+
+def test_technique_relation_to_an_unlisted_technique_is_rejected():
+    with pytest.raises(ValidationError):
+        ReportExtraction.model_validate(_payload(techniques=[]))
+
+
+def test_ioc_relations_do_not_need_a_listed_target():
+    relations = [
+        {
+            "actor": "LockBit",
+            "type": "EXPLOITS",
+            "target": "CVE-2023-4966",
+            "evidence": EVIDENCE,
+        }
+    ]
+
+    extraction = ReportExtraction.model_validate(_payload(techniques=[], relations=relations))
+
+    assert extraction.relations[0].target == "CVE-2023-4966"

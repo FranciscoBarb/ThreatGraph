@@ -1,8 +1,16 @@
 import re
 from collections.abc import Callable
 from enum import StrEnum
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from threatgraph.extract.iocs import (
     extract_cves,
@@ -97,3 +105,22 @@ class Relation(_StrictModel):
         if canonical is None:
             raise ValueError(f"{value!r} is not a valid target for {relation_type}")
         return canonical
+
+
+class ReportExtraction(_StrictModel):
+    actors: tuple[ThreatActor, ...] = ()
+    techniques: tuple[Technique, ...] = ()
+    relations: tuple[Relation, ...] = ()
+
+    @model_validator(mode="after")
+    def relations_refer_to_listed_entities(self) -> Self:
+        actor_names = {actor.name for actor in self.actors}
+        technique_ids = {technique.mitre_id for technique in self.techniques}
+        for relation in self.relations:
+            if relation.actor not in actor_names:
+                raise ValueError(f"relation names an unlisted actor: {relation.actor!r}")
+            if relation.type is RelationType.USES_TECHNIQUE and (
+                relation.target not in technique_ids
+            ):
+                raise ValueError(f"relation points to an unlisted technique: {relation.target!r}")
+        return self

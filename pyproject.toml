@@ -11,6 +11,9 @@ dependencies = [
     "neo4j>=5",
     "python-dotenv>=1",
     "pydantic>=2",
+    "langchain-core",
+    "langchain-openai",
+    "langchain-ollama",
 ]
 
 [project.optional-dependencies]

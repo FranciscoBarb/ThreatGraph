@@ -31,6 +31,13 @@ Rules:
 - Every actor named in a relation must also appear in "actors", and every technique used in
   a USES_TECHNIQUE relation must appear in "techniques".
 - If there is nothing to extract, return empty lists.
+- Use the actor's proper name only, as it appears in the evidence sentence, without
+  descriptors such as "group", "gang", "operators", "affiliates" or "actors" (for example
+  "APT29", not "APT29 operators").
+- Create USES_IP, USES_DOMAIN and USES_HASH relations only for indicators that the actor
+  itself operates or deploys (command-and-control servers, staging hosts, malware). Do not
+  create them for indicators that belong to victims (compromised hosts, victim
+  infrastructure) or to legitimate or reference resources.
 - Reply with a single JSON object that follows the schema below. No explanations and no
   extra text.
 

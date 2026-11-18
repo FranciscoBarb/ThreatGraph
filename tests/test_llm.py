@@ -2,8 +2,10 @@ import json
 
 import pytest
 from langchain_core.messages import AIMessage
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
-from threatgraph.extract.llm import ExtractionError, extract_with_llm
+from threatgraph.extract.llm import ExtractionError, build_model, extract_with_llm
 from threatgraph.extract.schemas import RelationType, ReportExtraction
 
 REPORT = "LockBit operators used 185.220.101.5 as command and control."
@@ -90,3 +92,38 @@ def test_gives_up_after_max_retries():
 
     # 1 initial attempt + 2 retries
     assert len(model.calls) == 3
+
+
+def test_build_model_returns_a_temperature_zero_openai_model(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_MODEL", "gpt-test-model")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-key-for-tests")
+
+    model = build_model()
+
+    assert isinstance(model, ChatOpenAI)
+    assert model.model_name == "gpt-test-model"
+    assert model.temperature == 0
+
+
+def test_build_model_returns_a_temperature_zero_ollama_model_without_thinking(
+    monkeypatch,
+):
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("LLM_MODEL", "qwen3:8b")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+    model = build_model()
+
+    assert isinstance(model, ChatOllama)
+    assert model.model == "qwen3:8b"
+    assert model.temperature == 0
+    assert model.reasoning is False
+
+
+def test_build_model_rejects_an_unknown_provider(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "banana")
+    monkeypatch.setenv("LLM_MODEL", "whatever")
+
+    with pytest.raises(ValueError, match="banana"):
+        build_model()

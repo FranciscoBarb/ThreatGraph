@@ -1,8 +1,12 @@
 import json
+import os
 import re
 from typing import Any, Protocol
 
+from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from threatgraph.extract.schemas import ReportExtraction
@@ -77,3 +81,21 @@ def extract_with_llm(text: str, model: ChatModel, max_retries: int = 2) -> Repor
     raise ExtractionError(
         f"no valid extraction after {max_retries + 1} attempts. Last problems:\n{problem}"
     )
+
+
+def build_model() -> ChatModel:
+    """Create the chat model chosen in the environment (.env)."""
+    load_dotenv()
+    provider = os.environ["LLM_PROVIDER"].strip().lower()
+    model_name = os.environ["LLM_MODEL"]
+
+    if provider == "openai":
+        return ChatOpenAI(model=model_name, temperature=0)
+    if provider == "ollama":
+        return ChatOllama(
+            model=model_name,
+            temperature=0,
+            reasoning=False,
+            base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+        )
+    raise ValueError(f"unknown LLM_PROVIDER: {provider!r} (use 'openai' or 'ollama')")

@@ -2,7 +2,8 @@ import json
 import re
 from typing import Any, Protocol
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import ValidationError
 
 from threatgraph.extract.schemas import ReportExtraction
 
@@ -42,7 +43,37 @@ def _strip_fence(text: str) -> str:
     return match.group(1) if match else text
 
 
-def extract_with_llm(text: str, model: ChatModel) -> ReportExtraction:
+class ExtractionError(Exception):
+    """The model never produced a reply that passes the schema."""
+
+
+def _describe_error(error: ValidationError) -> str:
+    """Short, readable list of what was wrong, to send back to the model."""
+    lines = []
+    for item in error.errors():
+        where = ".".join(str(part) for part in item["loc"]) or "(root)"
+        lines.append(f"- {where}: {item['msg']}")
+    return "\n".join(lines)
+
+
+def extract_with_llm(text: str, model: ChatModel, max_retries: int = 2) -> ReportExtraction:
     messages = [SystemMessage(content=_SYSTEM_PROMPT), HumanMessage(content=text)]
-    reply = model.invoke(messages)
-    return ReportExtraction.model_validate_json(_strip_fence(reply.content))
+    problem = ""
+    for _ in range(max_retries + 1):
+        reply = model.invoke(messages)
+        try:
+            return ReportExtraction.model_validate_json(_strip_fence(reply.content))
+        except ValidationError as error:
+            problem = _describe_error(error)
+            messages.append(AIMessage(content=reply.content))
+            messages.append(
+                HumanMessage(
+                    content=(
+                        f"Your previous reply was invalid:\n{problem}\n"
+                        "Return the corrected JSON object only."
+                    )
+                )
+            )
+    raise ExtractionError(
+        f"no valid extraction after {max_retries + 1} attempts. Last problems:\n{problem}"
+    )

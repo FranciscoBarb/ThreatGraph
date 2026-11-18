@@ -1,8 +1,9 @@
 import json
 
+import pytest
 from langchain_core.messages import AIMessage
 
-from threatgraph.extract.llm import extract_with_llm
+from threatgraph.extract.llm import ExtractionError, extract_with_llm
 from threatgraph.extract.schemas import RelationType, ReportExtraction
 
 REPORT = "LockBit operators used 185.220.101.5 as command and control."
@@ -21,6 +22,10 @@ VALID_REPLY = json.dumps(
         ],
     }
 )
+
+# Same reply, but with no actors: the relation names LockBit and that actor
+# is not listed, so ReportExtraction rejects it.
+INVALID_REPLY = json.dumps({**json.loads(VALID_REPLY), "actors": []})
 
 
 class ScriptedModel:
@@ -55,3 +60,33 @@ def test_the_report_text_is_sent_to_the_model():
 
     sent = " ".join(str(message.content) for message in model.calls[0])
     assert REPORT in sent
+
+
+def test_invalid_reply_is_retried_and_the_error_is_sent_back():
+    model = ScriptedModel(INVALID_REPLY, VALID_REPLY)
+
+    extraction = extract_with_llm(REPORT, model)
+
+    assert isinstance(extraction, ReportExtraction)
+    assert len(model.calls) == 2
+    # The second attempt carries the reason for the failure so the model can fix it
+    assert "unlisted actor" in str(model.calls[1][-1].content)
+
+
+def test_reply_that_is_not_json_is_retried():
+    model = ScriptedModel("this is not json", VALID_REPLY)
+
+    extraction = extract_with_llm(REPORT, model)
+
+    assert isinstance(extraction, ReportExtraction)
+    assert len(model.calls) == 2
+
+
+def test_gives_up_after_max_retries():
+    model = ScriptedModel(INVALID_REPLY, INVALID_REPLY, INVALID_REPLY)
+
+    with pytest.raises(ExtractionError):
+        extract_with_llm(REPORT, model, max_retries=2)
+
+    # 1 initial attempt + 2 retries
+    assert len(model.calls) == 3

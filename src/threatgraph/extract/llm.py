@@ -32,8 +32,9 @@ Rules:
   a USES_TECHNIQUE relation must appear in "techniques".
 - If there is nothing to extract, return empty lists.
 - Use the actor's proper name only, as it appears in the evidence sentence, without
-  descriptors such as "group", "gang", "operators", "affiliates" or "actors" (for example
-  "APT29", not "APT29 operators").
+  descriptors such as "operators", "affiliates", "members" or "actors" (for example "APT29",
+  not "APT29 operators"). Keep words that are part of the name, such as "Group" in
+  "Lazarus Group".
 - Create USES_IP, USES_DOMAIN and USES_HASH relations only for indicators that the actor
   itself operates or deploys (command-and-control servers, staging hosts, malware). Do not
   create them for indicators that belong to victims (compromised hosts, victim
